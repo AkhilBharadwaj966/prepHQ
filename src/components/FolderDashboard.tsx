@@ -143,10 +143,12 @@ export default function FolderDashboard({ folderId, onSelectFolder, onOpenNote }
           {tasksQuery.data && tasksQuery.data.length > 0 ? (
             tasksQuery.data.map((t: any) => {
               const isDone = doneFolders.has(t.folderId)
+              const notesStr = (t.notes || []).map((n: any) => `${n.title} - ${n.dueCount}`).join(', ')
+              const label = t.relativePath ? `${t.relativePath} - ${notesStr}` : notesStr || '(this folder)'
               return (
                 <div key={t.folderId} className="flex items-center justify-between rounded bg-white p-3 shadow">
                   <div className={`text-sm ${isDone ? 'line-through text-gray-400' : ''}`}>
-                    {t.relativePath || '(this folder)'} — {t.dueCount} due
+                    {label}
                   </div>
                   <button
                     className="rounded bg-emerald-600 px-2 py-1 text-xs text-white"

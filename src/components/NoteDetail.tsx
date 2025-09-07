@@ -22,6 +22,9 @@ function NoteDetailImpl({ noteId, onBack }: Props, ref: React.Ref<NoteDetailHand
   const [backDraft, setBackDraft] = useState('')
   const [reviewOpen, setReviewOpen] = useState(false)
   const [reviewMode, setReviewMode] = useState<'all'|'pending'>('pending')
+  const [showImport, setShowImport] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [parsed, setParsed] = useState<Array<{front: string; back: string}>>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [slashOpen, setSlashOpen] = useState(false)
   const [content, setContent] = useState('')
@@ -110,7 +113,7 @@ function NoteDetailImpl({ noteId, onBack }: Props, ref: React.Ref<NoteDetailHand
   if (!note) return <div className="p-4">Loading...</div>
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
+    <div className="mx-auto max-w-none space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button className="rounded bg-gray-200 px-3 py-1 text-sm" onClick={async () => { await saveIfNeeded(); onBack(note.folderId) }}>
@@ -185,6 +188,9 @@ function NoteDetailImpl({ noteId, onBack }: Props, ref: React.Ref<NoteDetailHand
             <button className="rounded bg-indigo-600 px-3 py-1 text-sm text-white" onClick={() => { setFrontDraft(''); setBackDraft(''); setShowAddCard(true) }}>
               + New Card
             </button>
+            <button className="ml-2 rounded bg-gray-200 px-3 py-1 text-sm" onClick={() => { setShowImport(true); setImportText(''); setParsed([]) }}>
+              Import
+            </button>
           </div>
           <table className="w-full table-auto overflow-hidden rounded bg-white shadow">
             <thead>
@@ -211,7 +217,7 @@ function NoteDetailImpl({ noteId, onBack }: Props, ref: React.Ref<NoteDetailHand
                       <span>{c.back}</span>
                     )}
                   </td>
-                  <td className="p-2">
+                  <td className="p-2 space-x-2">
                     {editingCardId===c.id ? (
                       <>
                         <button className="rounded bg-emerald-600 px-2 py-1 text-xs text-white" onClick={async ()=>{
@@ -219,10 +225,17 @@ function NoteDetailImpl({ noteId, onBack }: Props, ref: React.Ref<NoteDetailHand
                           setEditingCardId(null)
                           cardsQuery.refetch()
                         }}>Save</button>
-                        <button className="ml-2 rounded bg-gray-200 px-2 py-1 text-xs" onClick={()=>{ setEditingCardId(null) }}>Cancel</button>
+                        <button className="rounded bg-gray-200 px-2 py-1 text-xs" onClick={()=>{ setEditingCardId(null) }}>Cancel</button>
                       </>
                     ) : (
-                      <button className="rounded bg-gray-200 px-2 py-1 text-xs" onClick={()=>{ setEditingCardId(c.id); setFrontDraft(c.front); setBackDraft(c.back) }}>✎ Edit</button>
+                      <>
+                        <button className="rounded bg-gray-200 px-2 py-1 text-xs" onClick={()=>{ setEditingCardId(c.id); setFrontDraft(c.front); setBackDraft(c.back) }}>✎ Edit</button>
+                        <button className="rounded bg-red-600 px-2 py-1 text-xs text-white" onClick={async ()=>{
+                          if (!confirm('Delete this card?')) return
+                          await fetch(`/api/cards/${c.id}`, { method: 'DELETE' })
+                          cardsQuery.refetch()
+                        }}>Delete</button>
+                      </>
                     )}
                   </td>
                 </tr>
@@ -242,6 +255,83 @@ function NoteDetailImpl({ noteId, onBack }: Props, ref: React.Ref<NoteDetailHand
                     setShowAddCard(false)
                     cardsQuery.refetch()
                   }}>Add</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {showImport && (
+            <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40">
+              <div className="h-[80vh] w-[80vw] overflow-hidden rounded bg-white p-4 shadow">
+                <div className="mb-2 text-sm font-semibold">Import Cards</div>
+                <div className="mb-2 text-xs text-gray-600">Paste lines as "Front | Back". One card per line.</div>
+                <textarea
+                  className="h-[35vh] w-full rounded border p-2 font-mono text-sm"
+                  placeholder="Capital of France | Paris\nAlgorithm for max subarray | Kadane"
+                  value={importText}
+                  onChange={(e)=>setImportText(e.target.value)}
+                />
+                <div className="my-2 text-right">
+                  <button
+                    className="rounded bg-gray-200 px-3 py-1 text-sm"
+                    onClick={() => {
+                      const lines = importText.split(/\r?\n/).map(l=>l.trim()).filter(Boolean)
+                      const rows: Array<{front:string;back:string}> = []
+                      for (const line of lines) {
+                        const parts = line.split('|')
+                        if (parts.length >= 2) {
+                          rows.push({ front: parts[0].trim(), back: parts.slice(1).join('|').trim() })
+                        } else {
+                          rows.push({ front: line, back: '' })
+                        }
+                      }
+                      setParsed(rows)
+                    }}
+                  >
+                    Parse
+                  </button>
+                </div>
+                {parsed.length > 0 && (
+                  <div className="h-[30vh] overflow-auto">
+                    <table className="w-full table-auto overflow-hidden rounded bg-white shadow">
+                      <thead>
+                        <tr className="bg-gray-50 text-left text-sm">
+                          <th className="p-2">Front</th>
+                          <th className="p-2">Back</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {parsed.map((row, idx) => (
+                          <tr key={idx} className="border-t text-sm">
+                            <td className="p-2"><input className="w-full rounded border p-1" value={row.front} onChange={(e)=>{
+                              const cp=[...parsed]; cp[idx]={...cp[idx], front:e.target.value}; setParsed(cp)
+                            }} /></td>
+                            <td className="p-2"><input className="w-full rounded border p-1" value={row.back} onChange={(e)=>{
+                              const cp=[...parsed]; cp[idx]={...cp[idx], back:e.target.value}; setParsed(cp)
+                            }} /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="mt-3 flex items-center justify-end gap-2">
+                  <button className="rounded bg-gray-200 px-3 py-1 text-sm" onClick={()=>{ setShowImport(false); setParsed([]); setImportText('') }}>Cancel</button>
+                  <button
+                    className="rounded bg-emerald-600 px-3 py-1 text-sm text-white"
+                    disabled={parsed.length===0}
+                    onClick={async ()=>{
+                      const rows = parsed.filter(r=>r.front && r.back)
+                      for (const r of rows) {
+                        await fetch('/api/cards', { method: 'POST', body: JSON.stringify({ noteId, front: r.front, back: r.back }) })
+                      }
+                      setShowImport(false)
+                      setParsed([])
+                      setImportText('')
+                      cardsQuery.refetch()
+                    }}
+                  >
+                    Import {parsed.length ? `(${parsed.length})` : ''}
+                  </button>
                 </div>
               </div>
             </div>

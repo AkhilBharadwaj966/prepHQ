@@ -7,6 +7,7 @@ export default function NotesTab({ folderId, onOpenNote }: { folderId: string | 
   const qc = useQueryClient()
   const [reviewOpen, setReviewOpen] = React.useState(false)
   const [reviewMode, setReviewMode] = React.useState<'all'|'pending'>('pending')
+  const [reviewNoteId, setReviewNoteId] = React.useState<string | null>(null)
   const { data } = useQuery({
     queryKey: ['notes', folderId],
     queryFn: async () => {
@@ -38,8 +39,8 @@ export default function NotesTab({ folderId, onOpenNote }: { folderId: string | 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-end gap-2">
-        <button className="rounded bg-gray-200 px-3 py-1 text-sm" onClick={()=>{ setReviewMode('pending'); setReviewOpen(true) }}>Revise Pending</button>
-        <button className="rounded bg-indigo-600 px-3 py-1 text-sm text-white" onClick={()=>{ setReviewMode('all'); setReviewOpen(true) }}>Revise All</button>
+        <button className="rounded bg-gray-200 px-3 py-1 text-sm" onClick={()=>{ setReviewMode('pending'); setReviewNoteId(null); setReviewOpen(true) }}>Revise Pending</button>
+        <button className="rounded bg-indigo-600 px-3 py-1 text-sm text-white" onClick={()=>{ setReviewMode('all'); setReviewNoteId(null); setReviewOpen(true) }}>Revise All</button>
       </div>
       <div className="rounded bg-white p-2 shadow">
         <input id="note-title" className="mb-2 w-full rounded border p-2 text-sm" placeholder="Title" />
@@ -55,16 +56,14 @@ export default function NotesTab({ folderId, onOpenNote }: { folderId: string | 
           }}>Add Note</button>
         </div>
       </div>
-      <ReviewModal open={reviewOpen} onClose={()=>setReviewOpen(false)} folderId={folderId || undefined} mode={reviewMode} />
+      <ReviewModal open={reviewOpen} onClose={()=>setReviewOpen(false)} folderId={reviewNoteId ? undefined : (folderId || undefined)} noteId={reviewNoteId || undefined} mode={reviewMode} />
       <div className="space-y-2">
         {(data || []).map((n: any) => (
           <div key={n.id} className="rounded bg-white p-2 shadow">
             <button className="mb-2 w-full whitespace-pre-wrap text-left text-sm hover:underline" onClick={()=>onOpenNote?.(n.id)}>{n.title || 'Untitled'}</button>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              {n.nextDue ? <span>Due: {new Date(n.nextDue).toDateString()}</span> : <span>Not scheduled</span>}
-              <button className="rounded bg-gray-200 px-2 py-0.5" onClick={() => schedule(n.id)}>Add to SR</button>
-              <button className="rounded bg-emerald-500 px-2 py-0.5 text-white" onClick={() => review(n.id, 'good')}>Good</button>
-              <button className="rounded bg-orange-500 px-2 py-0.5 text-white" onClick={() => review(n.id, 'again')}>Again</button>
+            <div className="flex items-center justify-end gap-2 text-xs text-gray-500">
+              <button className="rounded bg-gray-200 px-2 py-0.5" onClick={() => { setReviewMode('pending'); setReviewNoteId(n.id); setReviewOpen(true) }}>Revise Pending</button>
+              <button className="rounded bg-indigo-600 px-2 py-0.5 text-white" onClick={() => { setReviewMode('all'); setReviewNoteId(n.id); setReviewOpen(true) }}>Revise All</button>
             </div>
           </div>
         ))}

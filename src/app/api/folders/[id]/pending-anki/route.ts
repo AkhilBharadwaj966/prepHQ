@@ -16,22 +16,32 @@ export async function GET(_req: Request, { params }: Params) {
       folderId: { in: ids },
       OR: [{ nextDue: null }, { nextDue: { lte: end } }],
     },
-    select: { id: true, folderId: true },
+    select: { id: true, folderId: true, noteId: true, note: { select: { id: true, title: true } } },
   })
 
-  const byFolder = new Map<string, number>()
+  // Group by folder then note
+  type NoteAgg = { noteId: string; title: string; dueCount: number }
+  const byFolder = new Map<string, Map<string, NoteAgg>>()
   for (const c of cards) {
-    byFolder.set(c.folderId, (byFolder.get(c.folderId) || 0) + 1)
+    const fid = c.folderId
+    const nid = c.noteId
+    if (!byFolder.has(fid)) byFolder.set(fid, new Map())
+    const notesMap = byFolder.get(fid)!
+    const key = nid
+    const title = c.note?.title || 'Untitled'
+    const existing = notesMap.get(key)
+    if (existing) existing.dueCount += 1
+    else notesMap.set(key, { noteId: nid, title, dueCount: 1 })
   }
 
-  const result: Array<{ folderId: string; relativePath: string; dueCount: number }> = []
-  for (const [fid, dueCount] of byFolder) {
+  const result: Array<{ folderId: string; relativePath: string; notes: NoteAgg[] }> = []
+  for (const [fid, notesMap] of byFolder) {
     const path = await getFolderPath(fid)
-    // make relative (drop everything up to and including base)
     const idx = path.findIndex((p) => p.id === baseId)
     const rel = idx >= 0 ? path.slice(idx + 1) : path
     const relativePath = rel.map((p) => p.name).join(' / ')
-    result.push({ folderId: fid, relativePath, dueCount })
+    const notes = Array.from(notesMap.values()).sort((a, b) => a.title.localeCompare(b.title))
+    result.push({ folderId: fid, relativePath, notes })
   }
 
   // sort by path for stable order

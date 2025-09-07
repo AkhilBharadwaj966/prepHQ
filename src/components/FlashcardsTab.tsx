@@ -89,6 +89,11 @@ export default function FlashcardsTab({ folderId }: { folderId: string | null })
               ) : (
                 <button className="rounded bg-gray-200 px-2 py-0.5" onClick={() => setShowAnswerId(c.id)}>Show answer</button>
               )}
+              <button className="ml-auto rounded bg-red-600 px-2 py-0.5 text-white" onClick={async ()=>{
+                if (!confirm('Delete this card?')) return
+                await fetch(`/api/cards/${c.id}`, { method: 'DELETE' })
+                qc.invalidateQueries({ queryKey: ['cards', folderId] })
+              }}>Delete</button>
             </div>
           </div>
         ))}
