@@ -1,0 +1,98 @@
+// Prisma schema for PrepOS
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // Default to SQLite for local development. For Postgres in production,
+  // change provider to "postgresql" and update DATABASE_URL accordingly.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Folder {
+  id               String    @id @default(cuid())
+  parentId         String?
+  parent           Folder?   @relation("FolderToFolder", fields: [parentId], references: [id])
+  children         Folder[]  @relation("FolderToFolder")
+  name             String
+  color            String     @default("#4f46e5")
+  createdAt        DateTime   @default(now())
+  currentStreak    Int        @default(0)
+  lastStreakBumped DateTime?
+
+  topics           Topic[]
+  notes            Note[]
+  cards            Card[]
+  tasks            Task[]
+  snapshots        MetricSnapshot[]
+}
+
+model Topic {
+  id        String   @id @default(cuid())
+  folderId  String
+  folder    Folder   @relation(fields: [folderId], references: [id])
+  title     String
+  done      Boolean  @default(false)
+}
+
+model Note {
+  id            String    @id @default(cuid())
+  folderId      String
+  folder        Folder    @relation(fields: [folderId], references: [id])
+  title         String    @default("Untitled")
+  content       String
+  createdAt     DateTime  @default(now())
+  intervalIndex Int?
+  nextDue       DateTime?
+  cards         Card[]
+}
+
+model Card {
+  id            String    @id @default(cuid())
+  folderId      String
+  folder        Folder    @relation(fields: [folderId], references: [id])
+  noteId        String
+  note          Note      @relation(fields: [noteId], references: [id])
+  front         String
+  back          String
+  createdAt     DateTime  @default(now())
+  intervalIndex Int       @default(0)
+  nextDue       DateTime?
+}
+
+model Task {
+  id            String    @id @default(cuid())
+  folderId      String
+  folder        Folder    @relation(fields: [folderId], references: [id])
+  title         String
+  kind          String
+  linkId        String?
+  createdAt     DateTime  @default(now())
+  due           DateTime?
+  intervalIndex Int?
+  nextDue       DateTime?
+  completions   TaskCompletion[]
+}
+
+model TaskCompletion {
+  id       String   @id @default(cuid())
+  taskId   String
+  task     Task     @relation(fields: [taskId], references: [id])
+  doneOn   DateTime
+
+  @@unique([taskId, doneOn])
+}
+
+model MetricSnapshot {
+  id                String   @id @default(cuid())
+  folderId          String
+  folder            Folder   @relation(fields: [folderId], references: [id])
+  day               DateTime
+  completionPercent Int
+  topicsCompleted   Int
+  topicsTotal       Int
+  streak            Int
+
+  @@unique([folderId, day])
+}
