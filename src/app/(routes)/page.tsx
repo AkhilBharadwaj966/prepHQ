@@ -1,6 +1,6 @@
 "use client"
-import { useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import FolderTree from '@/components/FolderTree'
 import FolderDashboard from '@/components/FolderDashboard'
 import NotesTab from '@/components/NotesTab'
@@ -19,6 +19,10 @@ export default function HomePage() {
   const [selectedNoteId, setSelectedNoteId] = useState<string|null>(null)
   const [prevTab, setPrevTab] = useState<Tab | null>(null)
   const noteRef = useRef<NoteDetailHandle | null>(null)
+  const qc = useQueryClient()
+  const [actionsOpen, setActionsOpen] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const actionsRef = useRef<HTMLDivElement | null>(null)
   const pathQuery = useQuery({
     queryKey: ['folder', folderId, 'path-for-header'],
     queryFn: async () => {
@@ -70,6 +74,25 @@ export default function HomePage() {
                 {t}
               </button>
             ))}
+            <div ref={actionsRef} className="relative">
+              <button
+                className={`rounded px-3 py-1 ${folderId ? 'bg-gray-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                onClick={() => folderId && setActionsOpen((v) => !v)}
+                disabled={!folderId}
+              >
+                Actions ▾
+              </button>
+              {actionsOpen && (
+                <div className="absolute right-0 z-10 mt-1 w-40 rounded border bg-white shadow">
+                  <button
+                    className="block w-full px-3 py-2 text-left text-xs hover:bg-gray-100"
+                    onClick={() => { setActionsOpen(false); setConfirmDeleteOpen(true) }}
+                  >
+                    Delete folder
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex-1 overflow-auto p-4">
@@ -96,6 +119,24 @@ export default function HomePage() {
         </div>
         <QuickNoteButton folderId={folderId} />
       </main>
+      {confirmDeleteOpen && folderId && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded bg-white p-4 shadow">
+            <div className="mb-2 text-sm font-semibold">Delete folder?</div>
+            <div className="mb-4 text-sm text-gray-600">This will delete this folder and all its contents (notes, cards, topics, tasks) in the subtree. This action cannot be undone.</div>
+            <div className="text-right">
+              <button className="mr-2 rounded bg-gray-200 px-3 py-1 text-sm" onClick={()=>setConfirmDeleteOpen(false)}>Cancel</button>
+              <button className="rounded bg-red-600 px-3 py-1 text-sm text-white" onClick={async ()=>{
+                await fetch(`/api/folders/${folderId}`, { method: 'DELETE' })
+                setConfirmDeleteOpen(false)
+                setSelectedNoteId(null)
+                setFolderId(null)
+                qc.invalidateQueries({ queryKey: ['folders','tree'] })
+              }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

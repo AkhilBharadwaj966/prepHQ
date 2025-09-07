@@ -19,14 +19,11 @@ export default function FolderNode({ node, selectedId, onSelect, refresh }: Prop
     refresh()
   }
 
-  async function remove() {
-    await fetch(`/api/folders/${node.id}`, { method: 'DELETE' })
-    refresh()
-  }
+  async function remove() {}
 
   return (
     <div className="pl-2">
-      <div className={`flex items-center gap-2 rounded px-1 py-0.5 hover:bg-gray-100 ${isSelected ? 'bg-gray-200' : ''}`}>
+      <div className={`relative flex items-center gap-2 rounded px-1 py-0.5 hover:bg-gray-100 ${isSelected ? 'bg-gray-200' : ''}`}>
         <button className="h-3 w-3 rounded" style={{ backgroundColor: node.color }} onClick={() => onSelect(node.id)} />
         {editing ? (
           <input className="w-32 rounded border px-1 text-sm" value={name} onChange={(e) => setName(e.target.value)} onBlur={save} />
@@ -45,13 +42,14 @@ export default function FolderNode({ node, selectedId, onSelect, refresh }: Prop
           }}
           title="Pick color"
         />
-        <button className="text-xs text-red-500" onClick={remove}>✕</button>
+        {/* Actions moved to top nav */}
       </div>
       <div className="ml-3 border-l pl-2">
         {node.children?.map((child) => (
           <FolderNode key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} refresh={refresh} />
         ))}
       </div>
+
     </div>
   )
 }
