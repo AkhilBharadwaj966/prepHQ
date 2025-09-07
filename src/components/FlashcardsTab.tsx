@@ -8,6 +8,10 @@ export default function FlashcardsTab({ folderId }: { folderId: string | null })
   const [showAnswerId, setShowAnswerId] = useState<string | null>(null)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [reviewMode, setReviewMode] = useState<'all'|'pending'>('pending')
+  const [editOpen, setEditOpen] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [frontDraft, setFrontDraft] = useState('')
+  const [backDraft, setBackDraft] = useState('')
   const { data } = useQuery({
     queryKey: ['cards', folderId],
     queryFn: async () => {
@@ -89,7 +93,8 @@ export default function FlashcardsTab({ folderId }: { folderId: string | null })
               ) : (
                 <button className="rounded bg-gray-200 px-2 py-0.5" onClick={() => setShowAnswerId(c.id)}>Show answer</button>
               )}
-              <button className="ml-auto rounded bg-red-600 px-2 py-0.5 text-white" onClick={async ()=>{
+              <button className="ml-auto rounded bg-gray-200 px-2 py-0.5" onClick={()=>{ setEditId(c.id); setFrontDraft(c.front); setBackDraft(c.back); setEditOpen(true) }}>Edit</button>
+              <button className="ml-2 rounded bg-red-600 px-2 py-0.5 text-white" onClick={async ()=>{
                 if (!confirm('Delete this card?')) return
                 await fetch(`/api/cards/${c.id}`, { method: 'DELETE' })
                 qc.invalidateQueries({ queryKey: ['cards', folderId] })
@@ -99,6 +104,24 @@ export default function FlashcardsTab({ folderId }: { folderId: string | null })
         ))}
       </div>
       <ReviewModal open={reviewOpen} onClose={() => setReviewOpen(false)} folderId={folderId || undefined} mode={reviewMode} />
+      {editOpen && editId && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md rounded bg-white p-4 shadow">
+            <div className="mb-2 text-sm font-semibold">Edit Card</div>
+            <input className="mb-2 w-full rounded border p-2 text-sm" placeholder="Front" value={frontDraft} onChange={(e)=>setFrontDraft(e.target.value)} />
+            <input className="mb-2 w-full rounded border p-2 text-sm" placeholder="Back" value={backDraft} onChange={(e)=>setBackDraft(e.target.value)} />
+            <div className="text-right">
+              <button className="mr-2 rounded bg-gray-200 px-3 py-1 text-sm" onClick={()=>{ setEditOpen(false); setEditId(null) }}>Cancel</button>
+              <button className="rounded bg-emerald-600 px-3 py-1 text-sm text-white" onClick={async ()=>{
+                await fetch(`/api/cards/${editId}`, { method: 'PATCH', body: JSON.stringify({ front: frontDraft, back: backDraft }) })
+                setEditOpen(false)
+                setEditId(null)
+                qc.invalidateQueries({ queryKey: ['cards', folderId] })
+              }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

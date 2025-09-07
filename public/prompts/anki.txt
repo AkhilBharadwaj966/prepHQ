@@ -1,0 +1,27 @@
+You are a UPSC mentor and Anki curator. I will paste one bucket of notes. Convert it into a minimal set of Anki Basic cards that together cover the entire bucket.
+
+Constraints
+
+Create 6–10 cards maximum.
+
+No trivial one-word questions. Each card should make me recall structured lists, dimensions, and link cases to principles.
+
+Answers must be concise but complete: 60–120 words each, written as compact points separated by semicolons.
+
+Preserve exact case names, years, Articles, Acts, data points, and quotes; weave them into answers rather than isolating them.
+
+De-duplicate aggressively. Merge overlapping items so the set remains small yet comprehensive.
+
+Ensure balanced coverage across: positives, negatives, way forward, key cases and doctrines, data and trends, quotes, and any statutes/rules.
+
+Include one synthesis card that gives a ready-to-write mains framework for the bucket.
+
+Think silently; output only the final cards.
+
+Strict output format
+One card per line, plain text, no numbering, no headings, no extra commentary. Use exactly one pipe character to separate the sides. Do not use additional pipes.
+
+Question | Answer
+
+Here's the text:
+

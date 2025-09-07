@@ -20,11 +20,14 @@ function NoteDetailImpl({ noteId, onBack }: Props, ref: React.Ref<NoteDetailHand
   const [editingCardId, setEditingCardId] = useState<string|null>(null)
   const [frontDraft, setFrontDraft] = useState('')
   const [backDraft, setBackDraft] = useState('')
+  const [showEditCard, setShowEditCard] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [reviewMode, setReviewMode] = useState<'all'|'pending'>('pending')
   const [showImport, setShowImport] = useState(false)
   const [importText, setImportText] = useState('')
   const [parsed, setParsed] = useState<Array<{front: string; back: string}>>([])
+  const [selBox, setSelBox] = useState<{x:number;y:number}|null>(null)
+  const [selText, setSelText] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [slashOpen, setSlashOpen] = useState(false)
   const [content, setContent] = useState('')
@@ -177,20 +180,66 @@ function NoteDetailImpl({ noteId, onBack }: Props, ref: React.Ref<NoteDetailHand
             )}
           </div>
         ) : (
-          <div className="prose max-w-none rounded bg-white p-4 shadow">
+          <div
+            className="prose relative max-w-none rounded bg-white p-4 shadow"
+            onMouseUp={(e) => {
+              const sel = window.getSelection()
+              const text = sel?.toString() || ''
+              if (text.trim().length > 0 && sel && sel.rangeCount > 0) {
+                const rect = sel.getRangeAt(0).getBoundingClientRect()
+                const parentRect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                setSelBox({ x: rect.left - parentRect.left + rect.width / 2, y: rect.top - parentRect.top })
+                setSelText(text)
+              } else {
+                setSelBox(null)
+                setSelText('')
+              }
+            }}
+          >
             <h1>{title || 'Untitled'}</h1>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{content || ''}</ReactMarkdown>
+            {selBox && selText && (
+              <div
+                className="absolute z-10 -translate-x-1/2 transform rounded border bg-white px-2 py-1 text-xs shadow"
+                style={{ left: selBox.x, top: selBox.y - 36 }}
+              >
+                <button
+                  className="rounded bg-indigo-600 px-2 py-0.5 text-white"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/prompts/anki.txt')
+                      const prompt = await res.text()
+                      const text = `${prompt.trim()}\n\n${selText.trim()}`
+                      await navigator.clipboard.writeText(text)
+                    } catch (err) {
+                      console.error(err)
+                    } finally {
+                      setSelBox(null)
+                      setSelText('')
+                    }
+                  }}
+                >
+                  Copy + Prompt
+                </button>
+              </div>
+            )}
           </div>
         )
       ) : (
         <div className="space-y-2">
-          <div className="flex items-center justify-end">
-            <button className="rounded bg-indigo-600 px-3 py-1 text-sm text-white" onClick={() => { setFrontDraft(''); setBackDraft(''); setShowAddCard(true) }}>
-              + New Card
-            </button>
-            <button className="ml-2 rounded bg-gray-200 px-3 py-1 text-sm" onClick={() => { setShowImport(true); setImportText(''); setParsed([]) }}>
-              Import
-            </button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button className="rounded bg-gray-200 px-3 py-1 text-sm" onClick={()=>{ setReviewMode('pending'); setReviewOpen(true) }}>Revise Pending</button>
+              <button className="rounded bg-indigo-600 px-3 py-1 text-sm text-white" onClick={()=>{ setReviewMode('all'); setReviewOpen(true) }}>Revise All</button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="rounded bg-indigo-600 px-3 py-1 text-sm text-white" onClick={() => { setFrontDraft(''); setBackDraft(''); setShowAddCard(true) }}>
+                + New Card
+              </button>
+              <button className="rounded bg-gray-200 px-3 py-1 text-sm" onClick={() => { setShowImport(true); setImportText(''); setParsed([]) }}>
+                Import
+              </button>
+            </div>
           </div>
           <table className="w-full table-auto overflow-hidden rounded bg-white shadow">
             <thead>
@@ -204,39 +253,18 @@ function NoteDetailImpl({ noteId, onBack }: Props, ref: React.Ref<NoteDetailHand
               {(cardsQuery.data || []).map((c: any) => (
                 <tr key={c.id} className="border-t text-sm">
                   <td className="p-2">
-                    {editingCardId===c.id ? (
-                      <input className="w-full rounded border p-1" value={frontDraft} onChange={(e)=>setFrontDraft(e.target.value)} />
-                    ) : (
-                      <span>{c.front}</span>
-                    )}
+                    <span>{c.front}</span>
                   </td>
                   <td className="p-2">
-                    {editingCardId===c.id ? (
-                      <input className="w-full rounded border p-1" value={backDraft} onChange={(e)=>setBackDraft(e.target.value)} />
-                    ) : (
-                      <span>{c.back}</span>
-                    )}
+                    <span>{c.back}</span>
                   </td>
                   <td className="p-2 space-x-2">
-                    {editingCardId===c.id ? (
-                      <>
-                        <button className="rounded bg-emerald-600 px-2 py-1 text-xs text-white" onClick={async ()=>{
-                          await fetch(`/api/cards/${c.id}`, { method: 'PATCH', body: JSON.stringify({ front: frontDraft, back: backDraft }) })
-                          setEditingCardId(null)
-                          cardsQuery.refetch()
-                        }}>Save</button>
-                        <button className="rounded bg-gray-200 px-2 py-1 text-xs" onClick={()=>{ setEditingCardId(null) }}>Cancel</button>
-                      </>
-                    ) : (
-                      <>
-                        <button className="rounded bg-gray-200 px-2 py-1 text-xs" onClick={()=>{ setEditingCardId(c.id); setFrontDraft(c.front); setBackDraft(c.back) }}>✎ Edit</button>
-                        <button className="rounded bg-red-600 px-2 py-1 text-xs text-white" onClick={async ()=>{
-                          if (!confirm('Delete this card?')) return
-                          await fetch(`/api/cards/${c.id}`, { method: 'DELETE' })
-                          cardsQuery.refetch()
-                        }}>Delete</button>
-                      </>
-                    )}
+                    <button className="rounded bg-gray-200 px-2 py-1 text-xs" onClick={()=>{ setEditingCardId(c.id); setFrontDraft(c.front); setBackDraft(c.back); setShowEditCard(true) }}>✎ Edit</button>
+                    <button className="rounded bg-red-600 px-2 py-1 text-xs text-white" onClick={async ()=>{
+                      if (!confirm('Delete this card?')) return
+                      await fetch(`/api/cards/${c.id}`, { method: 'DELETE' })
+                      cardsQuery.refetch()
+                    }}>Delete</button>
                   </td>
                 </tr>
               ))}
@@ -255,6 +283,28 @@ function NoteDetailImpl({ noteId, onBack }: Props, ref: React.Ref<NoteDetailHand
                     setShowAddCard(false)
                     cardsQuery.refetch()
                   }}>Add</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {showEditCard && editingCardId && (
+            <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40">
+              <div className="h-[80vh] w-[80vw] overflow-hidden rounded bg-white p-4 shadow">
+                <div className="mb-2 text-sm font-semibold">Edit Card</div>
+                <div className="flex h-[calc(100%-3rem)] flex-col overflow-auto">
+                  <label className="mb-1 text-xs text-gray-600">Front</label>
+                  <textarea className="mb-2 h-[30vh] w-full whitespace-pre-wrap break-words rounded border p-2 text-sm" placeholder="Front" value={frontDraft} onChange={(e)=>setFrontDraft(e.target.value)} />
+                  <label className="mb-1 text-xs text-gray-600">Back</label>
+                  <textarea className="mb-2 h-[30vh] w-full whitespace-pre-wrap break-words rounded border p-2 text-sm" placeholder="Back" value={backDraft} onChange={(e)=>setBackDraft(e.target.value)} />
+                  <div className="mt-auto text-right">
+                    <button className="mr-2 rounded bg-gray-200 px-3 py-1 text-sm" onClick={()=>{ setShowEditCard(false); setEditingCardId(null) }}>Cancel</button>
+                    <button className="rounded bg-emerald-600 px-3 py-1 text-sm text-white" onClick={async ()=>{
+                      await fetch(`/api/cards/${editingCardId}`, { method: 'PATCH', body: JSON.stringify({ front: frontDraft, back: backDraft }) })
+                      setShowEditCard(false)
+                      setEditingCardId(null)
+                      cardsQuery.refetch()
+                    }}>Save</button>
+                  </div>
                 </div>
               </div>
             </div>
