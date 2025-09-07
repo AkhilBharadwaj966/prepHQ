@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
-import type { Prisma } from '@prisma/client'
 import { FolderUpdateSchema } from '@/lib/validation/folder'
 import { getSubtreeIds } from '@/lib/tree'
 
@@ -21,7 +20,7 @@ export async function PATCH(req: Request, { params }: Params) {
 export async function DELETE(_req: Request, { params }: Params) {
   try {
     const ids = await getSubtreeIds(params.id)
-    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await prisma.$transaction(async (tx: any) => {
       // Delete dependent records in subtree
       const notes = await tx.note.findMany({ where: { folderId: { in: ids } }, select: { id: true } })
       const noteIds = notes.map((n) => n.id)
