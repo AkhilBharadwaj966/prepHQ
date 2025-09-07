@@ -1,6 +1,6 @@
 // Prisma schema for PrepOS
 generator client {
-  provider = "postgresql"
+  provider = "prisma-client-js"
 }
 
 datasource db {
