@@ -22,14 +22,14 @@ export async function DELETE(_req: Request, { params }: Params) {
     const ids = await getSubtreeIds(params.id)
     await prisma.$transaction(async (tx: any) => {
       // Delete dependent records in subtree
-      const notes = await tx.note.findMany({ where: { folderId: { in: ids } }, select: { id: true } })
-      const noteIds = notes.map((n) => n.id)
+      const notes = await tx.note.findMany({ where: { folderId: { in: ids } }, select: { id: true } }) as Array<{ id: string }>
+      const noteIds = notes.map((n: { id: string }) => n.id)
       if (noteIds.length) {
         await tx.card.deleteMany({ where: { noteId: { in: noteIds } } })
       }
 
-      const tasks = await tx.task.findMany({ where: { folderId: { in: ids } }, select: { id: true } })
-      const taskIds = tasks.map((t) => t.id)
+      const tasks = await tx.task.findMany({ where: { folderId: { in: ids } }, select: { id: true } }) as Array<{ id: string }>
+      const taskIds = tasks.map((t: { id: string }) => t.id)
       if (taskIds.length) {
         await tx.taskCompletion.deleteMany({ where: { taskId: { in: taskIds } } })
         await tx.task.deleteMany({ where: { id: { in: taskIds } } })

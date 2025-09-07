@@ -11,7 +11,7 @@ export type FolderNode = {
 export async function getFolderTree(): Promise<FolderNode[]> {
   const folders = await prisma.folder.findMany({ orderBy: { createdAt: 'asc' } })
   const map = new Map<string, FolderNode>()
-  folders.forEach((f) => {
+  folders.forEach((f: any) => {
     map.set(f.id, { id: f.id, name: f.name, color: f.color, parentId: f.parentId ?? null, children: [] })
   })
   const roots: FolderNode[] = []
@@ -28,7 +28,7 @@ export async function getFolderTree(): Promise<FolderNode[]> {
 export async function getSubtreeIds(folderId: string): Promise<string[]> {
   const folders = await prisma.folder.findMany()
   const byParent = new Map<string | null, string[]>()
-  folders.forEach((f) => {
+  folders.forEach((f: any) => {
     const key = f.parentId ?? null
     if (!byParent.has(key)) byParent.set(key, [])
     byParent.get(key)!.push(f.id)
@@ -47,7 +47,7 @@ export type FolderBasic = { id: string; name: string; color: string; parentId: s
 
 export async function getFolderPath(folderId: string): Promise<FolderBasic[]> {
   const folders = await prisma.folder.findMany()
-  const byId = new Map(folders.map((f) => [f.id, f]))
+  const byId = new Map(folders.map((f: any) => [f.id, f]))
   const path: FolderBasic[] = []
   let cur: any = byId.get(folderId)
   while (cur) {
@@ -60,5 +60,5 @@ export async function getFolderPath(folderId: string): Promise<FolderBasic[]> {
 export async function getChildren(folderId: string | null): Promise<FolderBasic[]> {
   const where = folderId ? { parentId: folderId } : { parentId: null as any }
   const children = await prisma.folder.findMany({ where, orderBy: { createdAt: 'asc' } })
-  return children.map((f) => ({ id: f.id, name: f.name, color: f.color, parentId: f.parentId ?? null }))
+  return children.map((f: any) => ({ id: f.id, name: f.name, color: f.color, parentId: f.parentId ?? null }))
 }
