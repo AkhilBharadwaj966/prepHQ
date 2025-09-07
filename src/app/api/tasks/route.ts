@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   const tasks = await prisma.task.findMany({ where, orderBy: { createdAt: 'desc' } })
   const start = dayjs().startOf('day').toDate()
   const end = dayjs().endOf('day').toDate()
-  const withDoneToday = await Promise.all(tasks.map(async (t) => {
+  const withDoneToday = await Promise.all(tasks.map(async (t: any) => {
     const doneToday = await prisma.taskCompletion.findFirst({ where: { taskId: t.id, doneOn: { gte: start, lte: end } } })
     return { ...t, doneToday: !!doneToday }
   }))
@@ -38,4 +38,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
-
