@@ -50,26 +50,30 @@ Note on env files
 
 ## Switch to Postgres
 
-- Edit `prisma/schema.prisma` datasource to use Postgres:
+This repo is now configured for Postgres by default (schema provider = `postgresql`).
+
+Cloud deploy (Vercel + Neon):
+
+1) Create a Neon Postgres and copy the pooled connection string (contains `-pooler` and `sslmode=require`).
+
+2) Apply migrations to Neon from your machine:
 
 ```
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-```
-
-- Set in `.env.local`:
-
-```
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DBNAME?schema=public
-```
-
-- Apply migrations:
-
-```
+export DATABASE_URL='postgresql://USER:PASSWORD@ep-xxxx-pooler.REGION.aws.neon.tech/neondb?sslmode=require'
 npx prisma migrate deploy
+pnpm prisma:seed   # optional demo data
 ```
+
+3) Deploy to Vercel:
+ - Import the GitHub repo
+ - In Vercel Project → Settings → Environment Variables: add `DATABASE_URL` with the Neon pooled URL
+ - Deploy
+
+Local dev against Neon (recommended):
+ - Set `DATABASE_URL` in `.env.local` to the same Neon pooled URL
+ - `pnpm dev`
+
+If you prefer SQLite locally, you must change `provider` back to `sqlite` in `prisma/schema.prisma` and update `DATABASE_URL`, but this diverges from production and is not recommended.
 
 ## Scripts
 
@@ -79,26 +83,3 @@ npx prisma migrate deploy
 - `pnpm prisma:seed` — seed database
 - `pnpm test` — run unit tests (sr logic, tree utils, one API route)
 
-## Repo Layout
-
-- `prisma/schema.prisma` — data model
-- `src/app` — App Router pages and API routes
-- `src/components` — UI components
-- `src/lib` — db client, SR and metrics logic, validations
-- `src/tests` — vitest unit tests
-
-## Acceptance Criteria Mapping
-
-- Nested folders: left navigation tree with inline rename and delete
-- Metrics: Strength, Completion Today, and Streak tiles on dashboard
-- Notes: create, schedule to SR, review Good/Again
-- Flashcards: create, show answer, Good/Again reschedules
-- Tasks: create with due date, mark done today (affects Completion Today)
-- Streak: Count today button snapshots metrics and bumps streak when >= 60% once per day
-- Persistence: Prisma + SQLite by default; reloading persists
-- Tests: SR logic, subtree aggregation, one API route
-
-## Notes
-
-- For production, add auth (NEXTAUTH_SECRET stub included) and wire to user accounts if needed.
-- UI is minimal Tailwind for clarity; extend as desired.

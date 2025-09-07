@@ -1,12 +1,11 @@
 // Prisma schema for PrepOS
 generator client {
-  provider = "prisma-client-js"
+  provider = "postgresql"
 }
 
 datasource db {
-  // Default to SQLite for local development. For Postgres in production,
-  // change provider to "postgresql" and update DATABASE_URL accordingly.
-  provider = "sqlite"
+  // Use Postgres for cloud (Neon/Supabase) and local (optional)
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
